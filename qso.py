@@ -1,6 +1,5 @@
-import logging
 import re
-
+import logging
 import daiquiri
 from graphviz import Digraph
 from statemachine import StateMachine, State
@@ -179,8 +178,8 @@ class FSMQso:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    logger = daiquiri.getLogger(__name__)
+    daiquiri.setup(logging.INFO)
+    logger = daiquiri.getLogger()
     good_qso = FakeFT8Listener_good()
     smqso = FSMQso(good_qso)
     transaction_fail_count = 0
@@ -199,9 +198,10 @@ if __name__ == "__main__":
                         """
                         Want to invoke the Transaction as the rule matches, and we are in the correct state
                         """
-                        logger.info(f"Regex {i['regex']} matched match {data}")
+                        logger.debug(f"Regex {i['regex']} matched match {data}")
                         wanted_transaction = i["transaction"]
                         smqso.FSM.run(wanted_transaction.identifier)
+                        logger.info(f"State -> {smqso.FSM.current_state.identifier}")
                         transaction_fail_count = 0
                         break
                     else:
