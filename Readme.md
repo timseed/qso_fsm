@@ -15,8 +15,15 @@ So it has two states.
 
 It **transitions** from On -> Off when **Button is pressed down**, and similarly it transitions from Off -> On when **Button is released**.
 
-### Example code
+### Example Graph 
 
+These states can be visualised as a graph.
+
+![](./Kitchen%20Light.gv.png)
+
+The states are depicted by the circles, whereas the transitions are show using lines with arrows.
+
+### Example code
 
 ```text python
 from statemachine import StateMachine, State
@@ -67,4 +74,8 @@ turned_off CallableInstance(Transition(State('On', identifier='On', value='On', 
 State('On', identifier='On', value='On', initial=False)
 State('Off', identifier='Off', value='Off', initial=True)
 ```
+
+## QSO Finite state Machine
+
+This is still work in progress - however, there is a basic working model which handles two (simplistic cases), included.
 
