@@ -166,50 +166,62 @@ class QsoMachine(StateMachine):
         dg.render("./{}.gv".format(name), format="png")
 
 class FSMQso:
-    def __init__(self, listener):
+    def __init__(self):
         self.logger = daiquiri.getLogger(__name__)
         self.FSM = QsoMachine()
-        self.qso = listener
+        self._qso = None
+        self.transaction_fail_count=0
+
+
+
+    def set_data_source(self,qso_data_source):
+        self._qso = qso_data_source
+
 
     def read(self) -> str:
-        line_data = self.qso.listen()
+        line_data = self._qso.listen()
         self.logger.debug(f"Current State is {self.FSM}")
         return line_data
+
+    def handle_data(self, data_from_qso_generator:str):
+        self.logger.debug(f"State -> {qso_robot.FSM.current_state_value}")
+
+        for i in qso_robot.FSM.FSM_Matches:
+            if i["cur_state"] == qso_robot.FSM.current_state:
+
+                if re.match(i["regex"], data_from_qso_generator):
+                    """
+                    Want to invoke the Transaction as the rule matches, and we are in the correct state
+                    """
+                    logger.debug(f"Regex {i['regex']} matched match {data_from_qso_generator}")
+                    wanted_transaction = i["transaction"]
+                    qso_robot.FSM.run(wanted_transaction.identifier)
+                    logger.info(f"State -> {qso_robot.FSM.current_state.identifier}")
+                    self.transaction_fail_count = 0
+                    break
+                else:
+                    logger.debug(f"Regex {i['regex']} does not match {data_from_qso_generator}")
+                    break
+            self.transaction_fail_count += 1
+        if self.transaction_fail_count > qso_robot.FSM.MAX_FAILS:
+            print("Max Fails Exceeded")
 
 
 if __name__ == "__main__":
     daiquiri.setup(logging.INFO)
     logger = daiquiri.getLogger()
+    qso_robot = FSMQso()
     good_qso = FakeFT8Listener_good()
-    smqso = FSMQso(good_qso)
-    transaction_fail_count = 0
-    smqso.FSM.plot_state_machine()
+    qso_robot.set_data_source(good_qso)
+    """ 
+    Dump the graph - very useful for debugging
+    """
+    qso_robot.FSM.plot_state_machine()
     logger.info("State Machine output as png")
     try:
         while True:
-            data = smqso.read()
-            # print(smqso.FSM.current_state)
-            logger.debug(f"State -> {smqso.FSM.current_state_value}")
-
-            for i in smqso.FSM.FSM_Matches:
-                if i["cur_state"] == smqso.FSM.current_state:
-
-                    if re.match(i["regex"], data):
-                        """
-                        Want to invoke the Transaction as the rule matches, and we are in the correct state
-                        """
-                        logger.debug(f"Regex {i['regex']} matched match {data}")
-                        wanted_transaction = i["transaction"]
-                        smqso.FSM.run(wanted_transaction.identifier)
-                        logger.info(f"State -> {smqso.FSM.current_state.identifier}")
-                        transaction_fail_count = 0
-                        break
-                    else:
-                        logger.debug(f"Regex {i['regex']} does not match {data}")
-                        break
-                transaction_fail_count += 1
-            if transaction_fail_count > smqso.FSM.MAX_FAILS:
-                print("Max Fails Exceeded")
-    except ValueError:
-        print("Data finished")
-    logger.debug(f"State -> {smqso.FSM.current_state_value}")
+            data = qso_robot.read()
+            logger.debug(f"State -> {qso_robot.FSM.current_state_value}")
+            qso_robot.handle_data(data)
+    except Exception as err:
+        logger.error(f"Problem {str(err)} occurred")
